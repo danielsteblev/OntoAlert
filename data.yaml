@@ -1,0 +1,11 @@
+# data.yaml (YOLOv8)
+# IMPORTANT: keep this file in UTF-8.
+path: ./dataset
+train: images/train
+val: images/val
+
+nc: 3
+names:
+  - graffiti
+  - littering
+  - smoking
