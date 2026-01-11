@@ -1,0 +1,66 @@
+@prefix vms: <http://example.org/vms#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+### Classes
+vms:ViolationType a rdfs:Class ;
+  rdfs:label "Violation type"@en ;
+  rdfs:label "Тип нарушения"@ru .
+
+### Properties
+vms:hasArticle a rdf:Property ;
+  rdfs:domain vms:ViolationType ;
+  rdfs:range xsd:string .
+
+vms:hasDescription a rdf:Property ;
+  rdfs:domain vms:ViolationType ;
+  rdfs:range xsd:string .
+
+vms:hasFineAmount a rdf:Property ;
+  rdfs:domain vms:ViolationType ;
+  rdfs:range xsd:decimal .
+
+vms:hasCurrency a rdf:Property ;
+  rdfs:domain vms:ViolationType ;
+  rdfs:range xsd:string .
+
+vms:hasCategory a rdf:Property ;
+  rdfs:domain vms:ViolationType ;
+  rdfs:range xsd:string .
+
+vms:hasSeverity a rdf:Property ;
+  rdfs:domain vms:ViolationType ;
+  rdfs:range xsd:string .
+
+### Individuals (IDs MUST match detector types: smoking/littering/graffiti)
+vms:smoking a vms:ViolationType ;
+  rdfs:label "smoking"@en ;
+  rdfs:label "курение"@ru ;
+  vms:hasArticle "6.24 КоАП РФ" ;
+  vms:hasDescription "Курение в запрещенных местах"@ru ;
+  vms:hasFineAmount 500.0 ;
+  vms:hasCurrency "RUB" ;
+  vms:hasCategory "Административное правонарушение"@ru ;
+  vms:hasSeverity "low" .
+
+vms:littering a vms:ViolationType ;
+  rdfs:label "littering"@en ;
+  rdfs:label "выброс мусора"@ru ;
+  vms:hasArticle "8.1 КоАП РФ" ;
+  vms:hasDescription "Выброс мусора в неположенном месте"@ru ;
+  vms:hasFineAmount 1000.0 ;
+  vms:hasCurrency "RUB" ;
+  vms:hasCategory "Административное правонарушение"@ru ;
+  vms:hasSeverity "medium" .
+
+vms:graffiti a vms:ViolationType ;
+  rdfs:label "graffiti"@en ;
+  rdfs:label "граффити"@ru ;
+  vms:hasArticle "7.17 КоАП РФ" ;
+  vms:hasDescription "Порча имущества (рисование граффити)"@ru ;
+  vms:hasFineAmount 5000.0 ;
+  vms:hasCurrency "RUB" ;
+  vms:hasCategory "Административное правонарушение"@ru ;
+  vms:hasSeverity "high" .
+

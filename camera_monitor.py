@@ -139,7 +139,7 @@ class CameraMonitor:
         # Классификация через онтологию
         violation = self.ontology.classify_violation(
             violation_type=violation_type,
-            location="Камера 1",  # В реальной системе должно быть из конфига
+            location="Демонстрационная камера",
             context={'confidence': violation_data['confidence']}
         )
         

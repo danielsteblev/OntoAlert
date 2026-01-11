@@ -21,6 +21,9 @@ YOLO_FALLBACK_MODEL = os.getenv('YOLO_FALLBACK_MODEL', 'yolov8n.pt')
 # YOLO_CLASS_NAMES=graffiti,littering,smoking
 YOLO_CLASS_NAMES = os.getenv('YOLO_CLASS_NAMES', '').strip()
 
+# RDF/TTL онтология (если файл есть — будет использован вместо встроенного словаря)
+ONTOLOGY_TTL_PATH = os.getenv('ONTOLOGY_TTL_PATH', 'violations_ontology.ttl')
+
 # Настройки камеры
 CAMERA_SOURCE = os.getenv('CAMERA_SOURCE', '0')
 FRAME_RATE = int(os.getenv('FRAME_RATE', '30'))

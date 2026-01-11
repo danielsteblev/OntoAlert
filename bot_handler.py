@@ -19,12 +19,14 @@ class BotHandler:
     """Класс для обработки команд и сообщений бота"""
     
     def __init__(self):
-        # Если в .env задан YOLO_MODEL_PATH (best.pt), бот будет использовать вашу обученную модель
+        # Использую мою обученную модель
         self.detector = ViolationDetector(model_path=config.YOLO_MODEL_PATH or None)
+
         print("🧠 YOLO model for Telegram bot:")
         print(f"   source: {self.detector.model_source}")
         print(f"   custom: {self.detector.using_custom_model}")
         print(f"   names:  {self.detector.model_class_names}")
+
         self.ontology = ViolationOntology()
         self.temp_dir = Path("temp_images")
         self.temp_dir.mkdir(exist_ok=True)
@@ -197,45 +199,45 @@ class BotHandler:
             )
             
             if violations:
-                # Сводим нарушения по типу: берём максимум уверенности по каждому типу
-                best_by_type = {}
-                for v in violations:
-                    t = v.get('type')
-                    c = float(v.get('confidence', 0.0))
-                    if t not in best_by_type or c > best_by_type[t]:
-                        best_by_type[t] = c
+                # Берём одно (самое уверенное) нарушение и формируем сообщение в заданном формате
+                top = max(violations, key=lambda v: float(v.get('confidence', 0.0)))
+                vtype = top.get('type')
+                conf = float(top.get('confidence', 0.0))
 
-                # Сортируем по уверенности и показываем топ-3, чтобы ответ был коротким
-                ordered = sorted(best_by_type.items(), key=lambda x: x[1], reverse=True)[:3]
+                violation_obj = self.ontology.classify_violation(
+                    violation_type=vtype,
+                    location="Демонстрационная камера",
+                    context={'confidence': conf}
+                )
+                timestamp_str = violation_obj.timestamp.strftime("%Y-%m-%d %H:%M:%S") if violation_obj.timestamp else "N/A"
+                probability_percent = (float(violation_obj.confidence) * 100) if violation_obj.confidence is not None else (conf * 100)
 
-                lines = ["✅ Обнаружены нарушения:"]
-                for vtype, conf in ordered:
-                    violation_obj = self.ontology.classify_violation(
-                        violation_type=vtype,
-                        location="Загружено пользователем",
-                        context={'confidence': conf}
-                    )
-                    probability_percent = conf * 100
-                    lines.append(
-                        f"- {violation_obj.description}: {probability_percent:.1f}% | {violation_obj.article} | {violation_obj.fine_amount:.0f} {violation_obj.fine_currency}"
-                    )
-
-                result_message = "\n".join(lines)
+                result_message = (
+                    "🚨 Обнаружено нарушение 🚨\n\n"
+                    f"Тип нарушения: <b>{violation_obj.description}</b>\n"
+                    f"Вероятность: <b>{probability_percent:.1f}%</b>\n"
+                    f"Статья КоАП: <b>{violation_obj.article}</b>\n"
+                    f"Штраф: <b>{violation_obj.fine_amount:.0f} {violation_obj.fine_currency}</b>\n\n"
+                    f"Время: <b>{timestamp_str}</b>\n"
+                    "Местоположение: <b>Демонстрационная камера</b>"
+                )
 
                 try:
                     await processing_msg.edit_text(
                         result_message,
+                        parse_mode='HTML',
                         read_timeout=20, write_timeout=20
                     )
                 except (TimedOut, httpx.ReadError, httpx.TimeoutException):
                     try:
                         await update.message.reply_text(
                             result_message,
+                            parse_mode='HTML',
                             read_timeout=20, write_timeout=20
                         )
                     except:
                         await update.message.reply_text(
-                            "✅ Обнаружены нарушения (не удалось отправить полный отчёт).",
+                            "✅ Нарушение обнаружено (не удалось отправить полный отчёт).",
                             read_timeout=15, write_timeout=15
                         )
             else:
@@ -354,7 +356,6 @@ class BotHandler:
             return
         
         print("🤖 Запуск Telegram бота...")
-        print("   Отправьте /start боту для начала работы")
         
         # Создаем HTTPXRequest с увеличенными таймаутами
         request = HTTPXRequest(

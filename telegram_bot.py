@@ -74,22 +74,24 @@ class TelegramNotifier:
             Отформатированное сообщение в HTML
         """
         timestamp_str = violation.timestamp.strftime("%Y-%m-%d %H:%M:%S") if violation.timestamp else "N/A"
-        location_str = violation.location if violation.location else "Не указано"
-        
-        message = f"""
-🚨 <b>ОБНАРУЖЕНО НАРУШЕНИЕ</b> 🚨
 
-<b>Тип нарушения:</b> {violation.description}
-<b>Статья:</b> {violation.article}
-<b>Штраф:</b> {violation.fine_amount:.2f} {violation.fine_currency}
+        # По запросу: фиксированное местоположение для демонстрационного режима
+        location_str = "Демонстрационная камера"
+        probability_line = ""
+        if violation.confidence is not None:
+            probability_line = f"Вероятность: <b>{violation.confidence * 100:.1f}%</b>\n"
 
-<b>Время:</b> {timestamp_str}
-<b>Местоположение:</b> {location_str}
+        message = (
+            "🚨 Обнаружено нарушение 🚨\n"
+            f"Тип нарушения: <b>{violation.description}</b>\n"
+            f"{probability_line}"
+            f"Статья КоАП: <b>{violation.article}</b>\n"
+            f"Штраф: <b>{violation.fine_amount:.0f} {violation.fine_currency}</b>\n\n"
+            f"Время: <b>{timestamp_str}</b>\n"
+            f"Местоположение: <b>{location_str}</b>"
+        )
 
-<i>Автоматическая система мониторинга</i>
-        """
-        
-        return message.strip()
+        return message
     
     async def send_test_message(self):
         """Отправляет тестовое сообщение для проверки работы бота"""

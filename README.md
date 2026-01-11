@@ -76,6 +76,9 @@ YOLO_MODEL_PATH=violation_detection/train/weights/best.pt
 # YOLO_CLASS_NAMES=smoking,littering,graffiti
 # Пример если модель показывает smoking как graffiti (то есть 0=graffiti,2=smoking):
 # YOLO_CLASS_NAMES=graffiti,littering,smoking
+
+# RDF/TTL онтология (обязательно): система берёт статьи/штрафы только из RDF (без встроенного словаря)
+# ONTOLOGY_TTL_PATH=violations_ontology.ttl
 ```
 
 И запустите:

@@ -1,9 +1,16 @@
-"""
-Онтология для классификации нарушений и определения штрафов
-"""
-from typing import Dict, Optional
+
+from typing import Dict, Optional, Any
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
+
+import config
+
+try:
+    from rdflib import Graph, Namespace
+except Exception:  # pragma: no cover
+    Graph = None  # type: ignore
+    Namespace = None  # type: ignore
 
 
 @dataclass
@@ -14,6 +21,7 @@ class Violation:
     description: str
     fine_amount: float
     fine_currency: str = "RUB"
+    confidence: Optional[float] = None
     timestamp: Optional[datetime] = None
     location: Optional[str] = None
     evidence_image_path: Optional[str] = None
@@ -28,35 +36,81 @@ class ViolationOntology:
     
     def _initialize_violations_db(self) -> Dict[str, Dict]:
         """
-        Инициализация базы знаний о нарушениях
-        В реальной системе это может быть загружено из RDF/OWL файла
+        Инициализация базы знаний о нарушениях.
+        Используется ТОЛЬКО RDF/TTL онтология (без встроенного словаря).
         """
-        return {
-            'smoking': {
-                'article': '6.24 КоАП РФ',
-                'description': 'Курение в запрещенных местах',
-                'fine_amount': 500.0,
-                'fine_currency': 'RUB',
-                'category': 'Административное правонарушение',
-                'severity': 'low'
-            },
-            'littering': {
-                'article': '8.1 КоАП РФ',
-                'description': 'Выброс мусора в неположенном месте',
-                'fine_amount': 1000.0,
-                'fine_currency': 'RUB',
-                'category': 'Административное правонарушение',
-                'severity': 'medium'
-            },
-            'graffiti': {
-                'article': '7.17 КоАП РФ',
-                'description': 'Порча имущества (рисование граффити)',
-                'fine_amount': 5000.0,
-                'fine_currency': 'RUB',
-                'category': 'Административное правонарушение',
-                'severity': 'high'
+        ttl_path = Path(getattr(config, "ONTOLOGY_TTL_PATH", "violations_ontology.ttl"))
+        if Graph is None or Namespace is None:
+            raise RuntimeError(
+                "rdflib is required to load RDF ontology. Install dependencies and retry."
+            )
+
+        if not ttl_path.exists():
+            raise FileNotFoundError(
+                f"Ontology TTL file not found: {ttl_path}. "
+                "Set ONTOLOGY_TTL_PATH in .env or place violations_ontology.ttl in project root."
+            )
+
+        return self._load_from_ttl(ttl_path)
+
+    def _load_from_ttl(self, ttl_path: Path) -> Dict[str, Dict[str, Any]]:
+        """
+        Загружает нарушения из Turtle файла.
+        Ожидаются индивиды с local-name, совпадающим с violation_type (smoking/littering/graffiti).
+        """
+        g = Graph()
+        g.parse(str(ttl_path), format="turtle")
+
+        VMS = Namespace("http://example.org/vms#")
+
+        def one_str(s, p, default: str = "") -> str:
+            v = next(iter(g.objects(s, p)), None)
+            return str(v) if v is not None else default
+
+        def one_float(s, p, default: float = 0.0) -> float:
+            v = next(iter(g.objects(s, p)), None)
+            if v is None:
+                return default
+            try:
+                return float(v)
+            except Exception:
+                return default
+
+        db: Dict[str, Dict[str, Any]] = {}
+
+        for s in g.subjects(predicate=None, object=None):
+            s_str = str(s)
+            if not s_str.startswith(str(VMS)):
+                continue
+
+            key = s_str.split("#", 1)[-1].strip()
+            if not key:
+                continue
+
+            article = one_str(s, VMS.hasArticle)
+            desc = one_str(s, VMS.hasDescription)
+            fine_amount = one_float(s, VMS.hasFineAmount)
+            fine_currency = one_str(s, VMS.hasCurrency, default="RUB")
+            category = one_str(s, VMS.hasCategory)
+            severity = one_str(s, VMS.hasSeverity, default="medium")
+
+            if not article and not desc and fine_amount == 0.0:
+                continue
+
+            db[key] = {
+                "article": article,
+                "description": desc,
+                "fine_amount": fine_amount,
+                "fine_currency": fine_currency,
+                "category": category,
+                "severity": severity,
             }
-        }
+
+        if not db:
+            raise RuntimeError("TTL loaded, but no violation individuals were parsed")
+
+        print(f"✅ RDF онтология загружена: {ttl_path} (types={len(db)})")
+        return db
     
     def classify_violation(self, violation_type: str, 
                           location: Optional[str] = None,
@@ -100,6 +154,7 @@ class ViolationOntology:
             description=violation_data['description'],
             fine_amount=fine_amount,
             fine_currency=violation_data['fine_currency'],
+            confidence=float(context.get('confidence')) if context and context.get('confidence') is not None else None,
             timestamp=datetime.now(),
             location=location,
             category=violation_data.get('category', ''),
